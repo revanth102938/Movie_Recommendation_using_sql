@@ -215,27 +215,33 @@ VALUES
 ((SELECT user_id FROM users WHERE user_name = 'User23'), (SELECT movie_id FROM movies WHERE title = 'Wanderers of Time'), 4.1, '2024-01-23'),
 ((SELECT user_id FROM users WHERE user_name = 'User24'), (SELECT movie_id FROM movies WHERE title = 'Chasing the Horizon'), 3.4, '2024-01-24'),
 ((SELECT user_id FROM users WHERE user_name = 'User25'), (SELECT movie_id FROM movies WHERE title = 'Falling Skies'), 5.0, '2024-01-25');
+
 -- TO FIND THE MOVIES RATED BY AN USER
-SELECT m.title, r.rating, r.rating_date
+SELECT mov.title, r.rating, r.rating_date
 FROM ratings r
-JOIN movies m ON r.movie_id = m.movie_id
+JOIN movies mov ON r.movie_id = mov.movie_id
 WHERE r.user_id = (SELECT user_id FROM users WHERE user_name = 'User5');
+
 -- TO FIND TOP 10 MOVIES BASED ON AVERAGE RATING
-SELECT m.title, AVG(r.rating) AS avg_rating
+SELECT mov.title, AVG(r.rating)
 FROM ratings r
-JOIN movies m ON r.movie_id = m.movie_id
-GROUP BY m.title
-ORDER BY avg_rating DESC
+JOIN movies mov ON r.movie_id = mov.movie_id
+GROUP BY mov.title
+ORDER BY AVG(r.rating) DESC
 LIMIT 10;
+
+
 -- TO RECOMMEND MOVIES BASED ON GENRE
-SELECT m.title
-FROM movies m
-JOIN movie_genres mg ON m.movie_id = mg.movie_id
+SELECT mov.title
+FROM movies mov
+JOIN movie_genres mg ON mov.movie_id = mg.movie_id
 JOIN genres g ON mg.genre_id = g.genre_id
 WHERE g.genre_name = 'Sci-Fi'
-  AND m.movie_id NOT IN (
+  AND mov.movie_id NOT IN (
     SELECT r.movie_id FROM ratings r WHERE r.user_id = (SELECT user_id FROM users WHERE user_name = 'User15')
   );
+
+
 -- TO FIND SIMILAR USERS BASED ON RATINGS
 SELECT u2.user_name, COUNT(*) AS common_ratings
 FROM ratings r1
@@ -246,3 +252,23 @@ WHERE u1.user_name = 'User7' AND u2.user_name != 'User7'
   AND ABS(r1.rating - r2.rating) <= 1 -- Users who rated within 1 point difference
 GROUP BY u2.user_name
 ORDER BY common_ratings DESC;
+
+-- Recommend Movies Based on Watchlist
+SELECT DISTINCT m.title
+FROM movies m
+JOIN movie_genres mg ON m.movie_id = mg.movie_id
+JOIN movie_genres mwg ON mwg.genre_id = mg.genre_id
+JOIN watchlist w ON w.movie_id = mwg.movie_id
+WHERE w.user_id = (SELECT user_id FROM users WHERE name = 'User9')
+  AND m.movie_id NOT IN (
+    SELECT movie_id FROM watchlist WHERE user_id = (SELECT user_id FROM users WHERE name = 'User9')
+  );
+
+
+-- Find Trending Movies Based on Watchlist Additions
+SELECT m.title, COUNT(w.movie_id)
+FROM watchlist w
+JOIN movies m ON w.movie_id = m.movie_id
+WHERE w.date_added > CURDATE() - INTERVAL 30 DAY
+GROUP BY m.title
+ORDER BY COUNT(w.movie_id) DESC;
